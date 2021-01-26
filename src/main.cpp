@@ -9,7 +9,7 @@
 #include <Button2.h>
 #include <Wire.h>
 #include <BH1750.h>
-#include <DHT12.h>
+#include "DHT.h"
 #include <Adafruit_BME280.h>
 #include <WiFiMulti.h>
 #include "esp_wifi.h"
@@ -104,7 +104,8 @@ private:
 
 #define I2C_SDA             25
 #define I2C_SCL             26
-#define DHT12_PIN           16
+#define DHTPIN              16
+#define DHTTYPE DHT11   // DHT 11
 #define BAT_ADC             33
 #define SALT_PIN            34
 #define SOIL_PIN            32
@@ -113,10 +114,9 @@ private:
 #define USER_BUTTON         35
 #define DS18B20_PIN         21                  //18b20 data pin
 
-
 BH1750 lightMeter(0x23); //0x23
 Adafruit_BME280 bmp;     //0x77
-DHT12 dht12(DHT12_PIN, true);
+DHT dht(DHTPIN, DHTTYPE);
 AsyncWebServer server(80);
 Button2 button(BOOT_PIN);
 Button2 useButton(USER_BUTTON);
@@ -246,7 +246,7 @@ void setup()
 
     Wire.begin(I2C_SDA, I2C_SCL);
 
-    dht12.begin();
+    dht.begin();
 
     //! Sensor power control pin , use deteced must set high
     pinMode(POWER_CTRL, OUTPUT);
@@ -323,9 +323,9 @@ void loop()
                 ESPDash.updateNumberCard("alt", (int)bme_altitude);
             }
 
-            float t12 = dht12.readTemperature();
+            float t12 = dht.readTemperature();
             // Read temperature as Fahrenheit (isFahrenheit = true)
-            float h12 = dht12.readHumidity();
+            float h12 = dht.readHumidity();
 
 
             if (!isnan(t12) && !isnan(h12) ) {
