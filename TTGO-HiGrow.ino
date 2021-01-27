@@ -9,19 +9,15 @@
 #include <Button2.h>
 #include <Wire.h>
 #include <BH1750.h>
-#include "DHT.h"
+#include <DHT12.h>
 #include <Adafruit_BME280.h>
 #include <WiFiMulti.h>
 #include "esp_wifi.h"
-#include "driver/adc.h"
 
-#include "esp32-hal-adc.h" // needed for adc pin reset
-#include "soc/sens_reg.h" // needed for adc pin reset
-uint64_t reg_b; // Used to store Pin registers
-
-// #define SOFTAP_MODE
+#define SOFTAP_MODE
 // #define USE_18B20_TEMP_SENSOR
 // #define USE_CHINESE_WEB
+
 
 
 // Simple ds18b20 class
@@ -105,30 +101,30 @@ private:
 };
 
 
-#define DHTTYPE DHT11   // DHT 11
 
 #define I2C_SDA             25
 #define I2C_SCL             26
-#define DHTPIN              16 //16
+#define DHT12_PIN           16
 #define BAT_ADC             33
 #define SALT_PIN            34
-#define SOIL_PIN            32 //32
+#define SOIL_PIN            32
 #define BOOT_PIN            0
 #define POWER_CTRL          4
 #define USER_BUTTON         35
 #define DS18B20_PIN         21                  //18b20 data pin
 
+
 BH1750 lightMeter(0x23); //0x23
 Adafruit_BME280 bmp;     //0x77
-DHT dht(DHTPIN, DHTTYPE);
+DHT12 dht12(DHT12_PIN, true);
 AsyncWebServer server(80);
 Button2 button(BOOT_PIN);
 Button2 useButton(USER_BUTTON);
 WiFiMulti multi;
 DS18B20 temp18B20(DS18B20_PIN);
 
-#define WIFI_SSID   "iWireless.co.za_FibreHome"
-#define WIFI_PASSWD "951753Fibre168"
+#define WIFI_SSID   "your wifi ssid"
+#define WIFI_PASSWD "you wifi password"
 
 
 
@@ -213,7 +209,6 @@ bool serverBegin()
 
 void setup()
 {
-    reg_b = READ_PERI_REG(SENS_SAR_READ_CTRL2_REG);
     Serial.begin(115200);
 
 #ifdef SOFTAP_MODE
@@ -251,7 +246,7 @@ void setup()
 
     Wire.begin(I2C_SDA, I2C_SCL);
 
-    dht.begin();
+    dht12.begin();
 
     //! Sensor power control pin , use deteced must set high
     pinMode(POWER_CTRL, OUTPUT);
@@ -297,7 +292,6 @@ uint32_t readSalt()
 uint16_t readSoil()
 {
     uint16_t soil = analogRead(SOIL_PIN);
-    Serial.print(soil);
     return map(soil, 0, 4095, 100, 0);
 }
 
@@ -314,7 +308,7 @@ void loop()
     static uint64_t timestamp;
     button.loop();
     useButton.loop();
-    if (millis() - timestamp > 10000 ) {
+    if (millis() - timestamp > 1000 ) {
         timestamp = millis();
         // if (WiFi.status() == WL_CONNECTED) {
         if (serverBegin()) {
@@ -329,9 +323,9 @@ void loop()
                 ESPDash.updateNumberCard("alt", (int)bme_altitude);
             }
 
-            float t12 = dht.readTemperature();
+            float t12 = dht12.readTemperature();
             // Read temperature as Fahrenheit (isFahrenheit = true)
-            float h12 = dht.readHumidity();
+            float h12 = dht12.readHumidity();
 
 
             if (!isnan(t12) && !isnan(h12) ) {
@@ -340,11 +334,9 @@ void loop()
             }
             ESPDash.updateNumberCard("lux", (int)lux);
 
-            adc_power_on();
             uint16_t soil = readSoil();
             uint32_t salt = readSalt();
             float bat = readBattery();
-            adc_power_off();
             ESPDash.updateHumidityCard("soil", (int)soil);
             ESPDash.updateNumberCard("salt", (int)salt);
             ESPDash.updateNumberCard("batt", (int)bat);
